@@ -1,0 +1,1 @@
+sed -i 's/MegaDealCard(product = product, modifier = Modifier.width(140.dp))/CircleDealsMegaDealCard(product = product, modifier = Modifier.width(170.dp))/' app/src/main/java/com/example/ui/screens/CircleDealsScreen.kt

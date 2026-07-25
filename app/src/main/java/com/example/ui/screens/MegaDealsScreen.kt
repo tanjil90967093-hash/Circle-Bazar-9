@@ -31,7 +31,6 @@ import kotlinx.coroutines.delay
 @Composable
 fun MegaDealsScreen(navController: NavController) {
     val context = LocalContext.current
-
     Scaffold(
         topBar = {
             Surface(
@@ -86,7 +85,7 @@ fun MegaDealsScreen(navController: NavController) {
             verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.padding(paddingValues)
         ) {
-            items(sampleProducts) { product ->
+            items(sampleProducts, key = { it.id }) { product ->
                 MegaDealCard(product = product)
             }
         }
@@ -95,30 +94,29 @@ fun MegaDealsScreen(navController: NavController) {
 
 @Composable
 fun MegaDealCard(product: Product, modifier: Modifier = Modifier, onClick: () -> Unit = {}) {
-    var timeLeft by remember { mutableLongStateOf(10 * 3600L) } // 10 hours in seconds
+    var localStock by remember { mutableStateOf(product.stockQuantity) }
+    var isFavorite by remember { mutableStateOf(false) }
     
+    // Timer state
+    var timeLeft by remember { mutableLongStateOf(24 * 60 * 60 * 1000L) } // 24 hours in ms
     LaunchedEffect(Unit) {
         while(timeLeft > 0) {
-            delay(1000L)
-            timeLeft--
+            delay(1000)
+            timeLeft -= 1000
         }
     }
     
-    val hours = timeLeft / 3600
-    val minutes = (timeLeft % 3600) / 60
-    val seconds = timeLeft % 60
-    val timeString = String.format("%02d:%02d:%02d", hours, minutes, seconds)
-    var isFavorite by remember { mutableStateOf(false) }
-    var quantityLeft by remember { mutableIntStateOf(10) }
+    val hours = (timeLeft / (1000 * 60 * 60)).toInt()
+    val minutes = ((timeLeft / (1000 * 60)) % 60).toInt()
+    val seconds = ((timeLeft / 1000) % 60).toInt()
+    val timeString = String.format("%02d : %02d : %02d", hours, minutes, seconds)
     
     Card(
         modifier = modifier
-            .height(295.dp)
+            .height(310.dp)
             .clickable { 
                 onClick()
-                if (quantityLeft > 0) {
-                    quantityLeft--
-                }
+                localStock?.let { if (it > 0) localStock = it - 1 }
             },
         shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -139,23 +137,23 @@ fun MegaDealCard(product: Product, modifier: Modifier = Modifier, onClick: () ->
                     modifier = Modifier.fillMaxSize()
                 )
                 
-                // Countdown timer overlay
+                // Timer Chip on Top
                 Box(
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .background(Color(0xFFD32F2F).copy(alpha = 0.9f))
-                        .padding(vertical = 4.dp)
+                        .align(Alignment.TopCenter)
+                        .padding(top = 8.dp)
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                        .background(Color(0xFFE53935).copy(alpha = 0.9f))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     Text(
-                        text = "Ends in $timeString",
+                        text = timeString,
                         color = Color.White,
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.align(Alignment.Center)
+                        fontWeight = FontWeight.Bold
                     )
                 }
-
+                
                 if (product.discount != null) {
                     Box(
                         modifier = Modifier
@@ -275,22 +273,26 @@ fun MegaDealCard(product: Product, modifier: Modifier = Modifier, onClick: () ->
 
                 Spacer(modifier = Modifier.height(6.dp))
                 
-                androidx.compose.material3.LinearProgressIndicator(
-                    progress = { quantityLeft / 10f },
-                    modifier = Modifier.fillMaxWidth().height(4.dp).clip(androidx.compose.foundation.shape.CircleShape),
-                    color = Color(0xFF4CAF50),
-                    trackColor = Color(0xFFE0E0E0),
-                    strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
-                )
-                
-                Spacer(modifier = Modifier.height(4.dp))
-                
-                Text(
-                    text = "Only $quantityLeft Left",
-                    fontSize = 10.sp,
-                    color = Color.Gray,
-                    fontWeight = FontWeight.Normal
-                )
+                if (localStock != null) {
+                    androidx.compose.material3.LinearProgressIndicator(
+                        progress = { (localStock ?: 0).toFloat() / 50f },
+                        modifier = Modifier.fillMaxWidth().height(4.dp).clip(androidx.compose.foundation.shape.CircleShape),
+                        color = Color(0xFF4CAF50),
+                        trackColor = Color(0xFFE0E0E0),
+                        strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                    )
+                    
+                    Spacer(modifier = Modifier.height(4.dp))
+                    
+                    Text(
+                        text = "Only $localStock Left",
+                        fontSize = 10.sp,
+                        color = Color(0xFF4CAF50), // Changed to green
+                        fontWeight = FontWeight.Normal
+                    )
+                } else {
+                    Spacer(modifier = Modifier.height(16.dp)) // Maintain height
+                }
             }
         }
     }

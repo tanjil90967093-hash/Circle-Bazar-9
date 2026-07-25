@@ -71,16 +71,17 @@ data class Product(
     val price: Double,
     val rating: Double,
     val soldCount: Int,
-    val discount: Int? = null
+    val discount: Int? = null,
+    val stockQuantity: Int? = null
 )
 
 val sampleProducts = listOf(
-    Product(1, "Premium Wireless Headphones with Noise Cancellation", "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=600&auto=format&fit=crop", 299.99, 199.99, 4.8, 1240, 33),
-    Product(2, "Minimalist Leather Watch", "https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=600&auto=format&fit=crop", null, 149.00, 4.5, 850),
-    Product(3, "Smart Fitness Tracker", "https://images.unsplash.com/photo-1575311373937-040b8e1fd5b6?q=80&w=600&auto=format&fit=crop", 89.99, 59.99, 4.2, 3200, 33),
-    Product(4, "Ergonomic Office Chair", "https://images.unsplash.com/photo-1505843490538-5133c6c7d0e1?q=80&w=600&auto=format&fit=crop", 399.00, 249.00, 4.9, 420, 37),
-    Product(5, "Professional DSLR Camera", "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=600&auto=format&fit=crop", 1299.00, 999.00, 4.7, 150, 23),
-    Product(6, "Wireless Gaming Mouse", "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?q=80&w=600&auto=format&fit=crop", 79.99, 49.99, 4.6, 5600, 37)
+    Product(1, "Premium Wireless Headphones with Noise Cancellation", "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=600&auto=format&fit=crop", 299.99, 199.99, 4.8, 1240, 33, 10),
+    Product(2, "Minimalist Leather Watch", "https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=600&auto=format&fit=crop", 199.0, 149.00, 4.5, 850, 25, null),
+    Product(3, "Smart Fitness Tracker", "https://images.unsplash.com/photo-1575311373937-040b8e1fd5b6?q=80&w=600&auto=format&fit=crop", 89.99, 59.99, 4.2, 3200, 33, 5),
+    Product(4, "Ergonomic Office Chair", "https://images.unsplash.com/photo-1505843490538-5133c6c7d0e1?q=80&w=600&auto=format&fit=crop", 399.00, 249.00, 4.9, 420, 37, 2),
+    Product(5, "Professional DSLR Camera", "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=600&auto=format&fit=crop", 1299.00, 999.00, 4.7, 150, 23, 10),
+    Product(6, "Wireless Gaming Mouse", "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?q=80&w=600&auto=format&fit=crop", 79.99, 49.99, 4.6, 5600, 37, 15)
 )
 
 data class Category(val name: String, val icon: ImageVector)
@@ -240,7 +241,7 @@ fun HomeScreen(navController: NavController) {
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(sampleCategories) { category ->
+                items(sampleCategories, key = { it.name }) { category ->
                     CategoryItem(category)
                 }
             }
@@ -256,7 +257,7 @@ fun HomeScreen(navController: NavController) {
                 contentPadding = PaddingValues(horizontal = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(circleDealsProducts) { product ->
+                items(circleDealsProducts, key = { it.id }) { product ->
                     CircleDealCard(
                         product = product,
                         modifier = Modifier.width(140.dp),
@@ -270,8 +271,10 @@ fun HomeScreen(navController: NavController) {
             SectionTitle("Just For You")
         }
         
+        val chunkedProducts = forYouProducts.chunked(2)
+        
         // Grid implementation using pairs for LazyColumn
-        items(forYouProducts.chunked(2)) { rowProducts ->
+        items(chunkedProducts, key = { it.first().id }) { rowProducts ->
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -415,9 +418,13 @@ fun CategoryItem(category: Category) {
 @Composable
 fun ProductCard(product: Product, modifier: Modifier = Modifier, onClick: () -> Unit = {}) {
     var isFavorite by remember { mutableStateOf(false) }
+    var localStock by remember { mutableStateOf(product.stockQuantity) }
 
     Card(
-        modifier = modifier.clickable { onClick() }.height(270.dp),
+        modifier = modifier.clickable { 
+            onClick() 
+            localStock?.let { if (it > 0) localStock = it - 1 }
+        }.height(if (localStock != null) 300.dp else 270.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         border = BorderStroke(1.dp, Color(0xFF4CAF50)),
@@ -553,6 +560,26 @@ fun ProductCard(product: Product, modifier: Modifier = Modifier, onClick: () -> 
                             modifier = Modifier.size(16.dp)
                         )
                     }
+                }
+                
+                if (localStock != null) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    androidx.compose.material3.LinearProgressIndicator(
+                        progress = { (localStock ?: 0).toFloat() / 50f },
+                        modifier = Modifier.fillMaxWidth().height(4.dp).clip(CircleShape),
+                        color = Color(0xFF4CAF50),
+                        trackColor = Color(0xFFE0E0E0),
+                        strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                    )
+                    
+                    Spacer(modifier = Modifier.height(4.dp))
+                    
+                    Text(
+                        text = "Only $localStock Left",
+                        fontSize = 11.sp,
+                        color = Color(0xFF4CAF50),
+                        fontWeight = FontWeight.Normal
+                    )
                 }
             }
         }
